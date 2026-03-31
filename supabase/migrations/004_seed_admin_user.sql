@@ -11,7 +11,7 @@
 DO $$
 DECLARE
   v_user_id UUID := uuid_generate_v4();
-  v_email   TEXT := 'admin@rangeguard.vn';
+  v_email   TEXT := 'mazzda@gmail.com';
 BEGIN
   -- Skip if this email already exists
   IF EXISTS (SELECT 1 FROM auth.users WHERE email = v_email) THEN
