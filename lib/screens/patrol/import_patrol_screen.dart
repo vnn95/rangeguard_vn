@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -28,16 +29,22 @@ class _ImportPatrolScreenState extends ConsumerState<ImportPatrolScreen> {
 
     if (result == null || result.files.isEmpty) return;
 
-    final bytes = result.files.first.bytes;
-    if (bytes == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Không đọc được file')),
-      );
+    // On Android/iOS, bytes is null – read from path instead
+    String jsonStr;
+    final file = result.files.first;
+    if (file.bytes != null) {
+      jsonStr = utf8.decode(file.bytes!);
+    } else if (file.path != null) {
+      jsonStr = await File(file.path!).readAsString();
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Không đọc được file')),
+        );
+      }
       return;
     }
-
-    final jsonStr = utf8.decode(bytes);
-    await _processJson(jsonStr, result.files.first.name);
+    await _processJson(jsonStr, file.name);
   }
 
   Future<void> _importSampleData() async {
