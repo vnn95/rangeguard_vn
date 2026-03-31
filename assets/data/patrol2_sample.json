@@ -1,0 +1,195 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [107.8456, 16.1235, 312.5]
+      },
+      "properties": {
+        "type": "NewPatrol",
+        "patrol_id": "P-2024-TKL01-087",
+        "leader": "Nguyễn Văn Bảo",
+        "station": "Trạm Kiểm Lâm Số 1",
+        "transport": "Đi bộ",
+        "mandate": "Tuần tra định kỳ - Khu vực Bắc",
+        "date": "2024-03-15T07:30:00+07:00",
+        "rangers": ["Nguyễn Văn Bảo", "Trần Thị Lan", "Lê Văn Đức"],
+        "comments": "Thời tiết thuận lợi, không có mưa"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [107.8498, 16.1268, 325.0]
+      },
+      "properties": {
+        "type": "Waypoint",
+        "date": "2024-03-15T07:45:22+07:00",
+        "accuracy": 4.2,
+        "altitude": 325.0
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [107.8542, 16.1302, 338.0]
+      },
+      "properties": {
+        "type": "Waypoint",
+        "date": "2024-03-15T08:01:15+07:00",
+        "accuracy": 3.8,
+        "altitude": 338.0
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [107.8585, 16.1340, 352.0]
+      },
+      "properties": {
+        "type": "Animal",
+        "date": "2024-03-15T08:18:43+07:00",
+        "accuracy": 5.1,
+        "altitude": 352.0,
+        "notes": "Phát hiện dấu vết heo rừng Sus scrofa - 3-4 cá thể"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [107.8625, 16.1375, 368.0]
+      },
+      "properties": {
+        "type": "Waypoint",
+        "date": "2024-03-15T08:34:22+07:00",
+        "accuracy": 4.6,
+        "altitude": 368.0
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [107.8668, 16.1408, 382.0]
+      },
+      "properties": {
+        "type": "Threat",
+        "date": "2024-03-15T08:52:07+07:00",
+        "accuracy": 3.5,
+        "altitude": 382.0,
+        "notes": "Phát hiện bẫy thú dạng lò xo - đã tháo gỡ và ghi nhận vị trí"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [107.8710, 16.1442, 395.0]
+      },
+      "properties": {
+        "type": "Waypoint",
+        "date": "2024-03-15T09:08:33+07:00",
+        "accuracy": 4.0,
+        "altitude": 395.0
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [107.8748, 16.1478, 410.0]
+      },
+      "properties": {
+        "type": "Waypoint",
+        "date": "2024-03-15T09:25:51+07:00",
+        "accuracy": 4.3,
+        "altitude": 410.0
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [107.8788, 16.1512, 422.0]
+      },
+      "properties": {
+        "type": "Photo",
+        "date": "2024-03-15T09:42:16+07:00",
+        "accuracy": 5.5,
+        "altitude": 422.0,
+        "notes": "Chụp ảnh cây cổ thụ - ước tính 200 năm tuổi"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [107.8825, 16.1548, 435.0]
+      },
+      "properties": {
+        "type": "Waypoint",
+        "date": "2024-03-15T09:58:42+07:00",
+        "accuracy": 3.9,
+        "altitude": 435.0
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [107.8862, 16.1582, 448.0]
+      },
+      "properties": {
+        "type": "Waypoint",
+        "date": "2024-03-15T10:15:22+07:00",
+        "accuracy": 4.1,
+        "altitude": 448.0
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [107.8900, 16.1618, 455.0]
+      },
+      "properties": {
+        "type": "Animal",
+        "date": "2024-03-15T10:32:05+07:00",
+        "accuracy": 4.8,
+        "altitude": 455.0,
+        "notes": "Quan sát Voọc chà vá chân nâu - đàn khoảng 8-10 cá thể"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [107.8938, 16.1652, 442.0]
+      },
+      "properties": {
+        "type": "Waypoint",
+        "date": "2024-03-15T10:48:37+07:00",
+        "accuracy": 4.5,
+        "altitude": 442.0
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [107.8975, 16.1685, 428.0]
+      },
+      "properties": {
+        "type": "StopPatrol",
+        "date": "2024-03-15T11:15:00+07:00",
+        "comments": "Hoàn thành tuần tra. Tổng: 2 bẫy phát hiện (đã tháo gỡ), 1 đàn Voọc, dấu vết heo rừng. Kiến nghị tăng cường tuần tra khu vực phía đông."
+      }
+    }
+  ]
+}
