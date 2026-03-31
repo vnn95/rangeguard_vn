@@ -13,9 +13,16 @@ DECLARE
   v_user_id UUID := uuid_generate_v4();
   v_email   TEXT := 'mazzda@gmail.com';
 BEGIN
-  -- Skip if this email already exists
+  -- If email already exists, just update the password and role then exit
   IF EXISTS (SELECT 1 FROM auth.users WHERE email = v_email) THEN
-    RAISE NOTICE 'Admin user % already exists – skipping.', v_email;
+    UPDATE auth.users
+      SET encrypted_password = crypt('12345678', gen_salt('bf', 10)),
+          updated_at          = NOW()
+      WHERE email = v_email;
+    UPDATE public.profiles
+      SET role = 'admin', is_active = true, updated_at = NOW()
+      WHERE email = v_email;
+    RAISE NOTICE 'Admin user % already exists – password reset to 12345678.', v_email;
     RETURN;
   END IF;
 
@@ -45,7 +52,7 @@ BEGIN
     'authenticated',
     v_email,
     -- bcrypt hash of 'admin' (cost=10)
-    crypt('admin', gen_salt('bf', 10)),
+    crypt('12345678', gen_salt('bf', 10)),
     NOW(),          -- email already confirmed
     NOW(),
     '{"provider":"email","providers":["email"]}',
