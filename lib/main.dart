@@ -6,6 +6,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:rangeguard_vn/core/router/app_router.dart';
 import 'package:rangeguard_vn/core/supabase/supabase_config.dart';
 import 'package:rangeguard_vn/core/theme/app_theme.dart';
+import 'package:rangeguard_vn/core/constants/app_constants.dart';
 import 'package:rangeguard_vn/core/utils/offline_sync.dart';
 import 'package:rangeguard_vn/providers/settings_provider.dart';
 
@@ -17,6 +18,16 @@ void main() async {
 
   // Initialize Hive for offline storage
   await Hive.initFlutter();
+
+  // Open all Hive boxes before the app starts so repositories
+  // can access them synchronously via Hive.box()
+  await Future.wait([
+    Hive.openBox(AppConstants.patrolBox),
+    Hive.openBox(AppConstants.waypointBox),
+    Hive.openBox(AppConstants.scheduleBox),
+    Hive.openBox(AppConstants.settingsBox),
+    Hive.openBox(AppConstants.syncQueueBox),
+  ]);
 
   // Initialize Supabase
   await SupabaseConfig.initialize();

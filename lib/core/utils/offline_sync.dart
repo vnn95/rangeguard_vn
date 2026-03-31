@@ -45,11 +45,12 @@ class OfflineSyncService {
   factory OfflineSyncService() => _instance;
   OfflineSyncService._();
 
-  late Box _syncBox;
   bool _isSyncing = false;
 
+  // Box is opened at app startup in main.dart
+  Box get _syncBox => Hive.box(AppConstants.syncQueueBox);
+
   Future<void> init() async {
-    _syncBox = await Hive.openBox(AppConstants.syncQueueBox);
     _listenConnectivity();
   }
 

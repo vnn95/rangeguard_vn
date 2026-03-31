@@ -4,9 +4,7 @@ import 'package:rangeguard_vn/models/waypoint_model.dart';
 import 'package:rangeguard_vn/repositories/patrol_repository.dart';
 
 final patrolRepositoryProvider = Provider<PatrolRepository>((ref) {
-  final repo = PatrolRepository();
-  repo.init();
-  return repo;
+  return PatrolRepository();
 });
 
 // Filter state

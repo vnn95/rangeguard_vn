@@ -18,13 +18,10 @@ class PatrolRepository {
   final _sync = OfflineSyncService();
 
   get _client => SupabaseConfig.client;
-  late Box _patrolBox;
-  late Box _waypointBox;
 
-  Future<void> init() async {
-    _patrolBox = await Hive.openBox(AppConstants.patrolBox);
-    _waypointBox = await Hive.openBox(AppConstants.waypointBox);
-  }
+  // Boxes are opened at app startup in main.dart – access synchronously
+  Box get _patrolBox => Hive.box(AppConstants.patrolBox);
+  Box get _waypointBox => Hive.box(AppConstants.waypointBox);
 
   // ── Patrol CRUD ─────────────────────────────────────────────────────────
 
