@@ -67,26 +67,24 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: '/patrols',
             name: 'patrols',
             builder: (_, __) => const PatrolListScreen(),
-            routes: [
-              // Static routes MUST come before :id to avoid being swallowed
-              GoRoute(
-                path: 'start',
-                name: 'start-patrol',
-                builder: (_, __) => const StartPatrolScreen(),
-              ),
-              GoRoute(
-                path: 'import',
-                name: 'import-patrol',
-                builder: (_, __) => const ImportPatrolScreen(),
-              ),
-              GoRoute(
-                path: ':id',
-                name: 'patrol-detail',
-                builder: (_, state) => PatrolDetailScreen(
-                  patrolId: state.pathParameters['id']!,
-                ),
-              ),
-            ],
+          ),
+          // Full-path routes – avoids :id swallowing static segments
+          GoRoute(
+            path: '/patrols/start',
+            name: 'start-patrol',
+            builder: (_, __) => const StartPatrolScreen(),
+          ),
+          GoRoute(
+            path: '/patrols/import',
+            name: 'import-patrol',
+            builder: (_, __) => const ImportPatrolScreen(),
+          ),
+          GoRoute(
+            path: '/patrols/:id',
+            name: 'patrol-detail',
+            builder: (_, state) => PatrolDetailScreen(
+              patrolId: state.pathParameters['id']!,
+            ),
           ),
           GoRoute(
             path: '/schedule',
