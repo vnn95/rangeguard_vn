@@ -162,10 +162,14 @@ class AuthRepository {
     String? phone,
     String? stationId,
   }) async {
-    // Tạo client riêng (không dùng session admin)
+    // Tạo client riêng (không dùng session admin).
+    // Dùng implicit flow vì PKCE cần Flutter async storage.
     final tempClient = SupabaseClient(
       SupabaseConfig.url,
       SupabaseConfig.anonKey,
+      authOptions: const AuthClientOptions(
+        authFlowType: AuthFlowType.implicit,
+      ),
     );
     try {
       final response = await tempClient.auth.signUp(
