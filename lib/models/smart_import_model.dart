@@ -1,4 +1,8 @@
-/// Model để parse file patrol2.json (SMART Conservation Tools format)
+/// Parser for SMART Conservation Tools GeoJSON export format.
+///
+/// Supports both:
+///   • Real SMART CT format  (SMART_ObservationType inside props or props.sighting)
+///   • Simple demo format    (props.type = 'NewPatrol' / 'Waypoint' etc.)
 class SmartPatrolData {
   final SmartNewPatrol? newPatrol;
   final List<SmartWaypoint> waypoints;
@@ -10,7 +14,7 @@ class SmartPatrolData {
     this.stopPatrol,
   });
 
-  /// Parse từ GeoJSON Feature Collection (SMART export format)
+  /// Entry point – call this inside compute() to avoid blocking the main thread.
   factory SmartPatrolData.fromGeoJson(Map<String, dynamic> json) {
     SmartNewPatrol? newPatrol;
     SmartStopPatrol? stopPatrol;
@@ -26,23 +30,37 @@ class SmartPatrolData {
       final double? lat = coords.length > 1 ? (coords[1] as num?)?.toDouble() : null;
       final double? alt = coords.length > 2 ? (coords[2] as num?)?.toDouble() : null;
 
-      final type = props['type'] as String? ?? '';
+      // ── Determine observation type ──────────────────────────────────────
+      // Real SMART format: type is in props.sighting.SMART_ObservationType
+      //                    or in props.SMART_ObservationType (for waypoints)
+      // Demo format:       type is in props.type
+      final sighting = props['sighting'] as Map<String, dynamic>?;
+      final smartType = sighting?['SMART_ObservationType'] as String? ??
+          props['SMART_ObservationType'] as String? ??
+          '';
+      final demoType = props['type'] as String? ?? '';
+
+      // Resolve to canonical type string
+      final type = _resolveType(smartType, demoType);
 
       if (type == 'NewPatrol') {
-        newPatrol = SmartNewPatrol.fromProps(props, lat: lat, lon: lon);
+        newPatrol = SmartNewPatrol.fromProps(props, sighting: sighting, lat: lat, lon: lon);
       } else if (type == 'StopPatrol') {
-        stopPatrol = SmartStopPatrol.fromProps(props, lat: lat, lon: lon);
-      } else {
-        if (lat != null && lon != null) {
-          waypoints.add(SmartWaypoint.fromProps(
-            props,
-            lat: lat,
-            lon: lon,
-            alt: alt,
-          ));
-        }
+        stopPatrol = SmartStopPatrol.fromProps(props, sighting: sighting, lat: lat, lon: lon);
+      } else if (lat != null && lon != null) {
+        waypoints.add(SmartWaypoint.fromProps(
+          props,
+          sighting: sighting,
+          lat: lat,
+          lon: lon,
+          alt: alt ?? (props['altitude'] as num?)?.toDouble(),
+          type: type,
+        ));
       }
     }
+
+    // Sort waypoints chronologically
+    waypoints.sort((a, b) => a.timestamp.compareTo(b.timestamp));
 
     return SmartPatrolData(
       newPatrol: newPatrol,
@@ -50,7 +68,22 @@ class SmartPatrolData {
       stopPatrol: stopPatrol,
     );
   }
+
+  static String _resolveType(String smartType, String demoType) {
+    // Real SMART types (case-insensitive match)
+    switch (smartType.toLowerCase()) {
+      case 'newpatrol':   return 'NewPatrol';
+      case 'stoppatrol':  return 'StopPatrol';
+      case 'waypoint':    return 'Waypoint';
+      case 'observation': return 'Observation';
+    }
+    // Demo / simplified format fallback
+    if (demoType.isNotEmpty) return demoType;
+    return 'Waypoint';
+  }
 }
+
+// ── NewPatrol ─────────────────────────────────────────────────────────────────
 
 class SmartNewPatrol {
   final String patrolId;
@@ -79,35 +112,68 @@ class SmartNewPatrol {
 
   factory SmartNewPatrol.fromProps(
     Map<String, dynamic> props, {
+    Map<String, dynamic>? sighting,
     double? lat,
     double? lon,
   }) {
-    final dateStr = props['date'] as String? ??
+    final s = sighting ?? {};
+
+    // Timestamp: real SMART uses camelCase 'dateTime'; demo uses 'date'
+    final dateStr = props['dateTime'] as String? ??
+        props['date'] as String? ??
         props['start_date'] as String? ??
         DateTime.now().toIso8601String();
 
+    // Patrol ID
+    final patrolId = s['SMART_PatrolID'] as String? ??
+        props['patrol_id'] as String? ??
+        props['id'] as String? ??
+        DateTime.now().millisecondsSinceEpoch.toString();
+
+    // Leader: real SMART may encode as 'e:uuid' – prefer appName for display
+    final rawLeader = s['SMART_Leader'] as String? ?? props['leader'] as String? ?? '';
+    final appName   = props['appName'] as String? ?? '';
+    final leader    = _humanReadable(rawLeader, fallback: appName.isNotEmpty ? appName : 'Unknown');
+
+    // Station: may be encoded as 'ps:uuid'
+    final rawStation = s['SMART_Station'] as String? ?? props['station'] as String? ?? '';
+    final station    = _humanReadable(rawStation, fallback: '');
+
+    // Transport: may be encoded as 'tt:uuid'
+    final rawTransport = s['SMART_PatrolTransport'] as String? ??
+        props['transport'] as String? ?? '';
+    final transport    = _humanReadable(rawTransport, fallback: 'Đi bộ');
+
+    // Mandate: may be encoded as 'pm:uuid'
+    final rawMandate = s['SMART_Mandate'] as String? ??
+        props['mandate'] as String? ?? '';
+    final mandate    = _humanReadable(rawMandate, fallback: 'Tuần tra định kỳ');
+
     return SmartNewPatrol(
-      patrolId: props['patrol_id'] as String? ??
-          props['id'] as String? ??
-          DateTime.now().millisecondsSinceEpoch.toString(),
-      leader: props['leader'] as String? ??
-          props['rangers']?.toString() ??
-          'Unknown',
-      station: props['station'] as String? ??
-          props['base_station'] as String? ??
-          '',
-      transport: props['transport'] as String? ??
-          props['transport_type'] as String? ??
-          'Đi bộ',
-      mandate: props['mandate'] as String? ??
-          props['objective'] as String? ??
-          'Tuần tra định kỳ',
-      comments: props['comments'] as String?,
+      patrolId:  patrolId,
+      leader:    leader,
+      station:   station,
+      transport: transport,
+      mandate:   mandate,
+      comments:  props['comments'] as String?,
       startTime: _parseDateTime(dateStr),
-      latitude: lat,
+      latitude:  lat,
       longitude: lon,
-      members: _parseMembers(props),
+      members:   _parseMembers(props),
     );
+  }
+
+  /// Real SMART encodes references as 'prefix:uuid' (e.g. 'e:abc123').
+  /// Strip the prefix and return just the UUID, or use [fallback] if unreadable.
+  static String _humanReadable(String raw, {required String fallback}) {
+    if (raw.isEmpty) return fallback;
+    // If it looks like a prefixed UUID (e.g. "e:abc123" / "ps:abc123")
+    final colonIdx = raw.indexOf(':');
+    if (colonIdx > 0 && colonIdx <= 3) {
+      // Just a UUID ref – can't resolve without SMART DB, use fallback
+      return fallback;
+    }
+    return raw;
   }
 
   static List<String> _parseMembers(Map<String, dynamic> props) {
@@ -118,13 +184,11 @@ class SmartNewPatrol {
   }
 
   static DateTime _parseDateTime(String s) {
-    try {
-      return DateTime.parse(s);
-    } catch (_) {
-      return DateTime.now();
-    }
+    try { return DateTime.parse(s); } catch (_) { return DateTime.now(); }
   }
 }
+
+// ── Waypoint ──────────────────────────────────────────────────────────────────
 
 class SmartWaypoint {
   final double latitude;
@@ -149,70 +213,102 @@ class SmartWaypoint {
 
   factory SmartWaypoint.fromProps(
     Map<String, dynamic> props, {
+    Map<String, dynamic>? sighting,
     required double lat,
     required double lon,
     double? alt,
+    String type = 'Waypoint',
   }) {
-    final dateStr = props['date'] as String? ??
+    final s = sighting ?? {};
+
+    // Timestamp: real SMART → 'dateTime'; demo → 'date' / 'timestamp'
+    final dateStr = props['dateTime'] as String? ??
+        props['date'] as String? ??
         props['timestamp'] as String? ??
         DateTime.now().toIso8601String();
 
+    // Photo: real SMART stores base64 photos as SMART_Photo0:0, SMART_Photo0:1 ...
+    // We store the first key name as a marker; actual upload is handled separately.
+    final photoKey = s.keys.firstWhere(
+      (k) => k.startsWith('SMART_Photo'),
+      orElse: () => '',
+    );
+    final photoUrl = photoKey.isNotEmpty
+        ? null // base64 photos handled by PhotoRepository
+        : (props['photo'] as String? ?? props['photo_url'] as String?);
+
+    // Notes from sighting attributes
+    final notes = s['SMART_Notes'] as String? ??
+        props['notes'] as String? ??
+        props['description'] as String?;
+
+    // Map 'Observation' type to something more meaningful if sub-type available
+    final obsType = type == 'Observation'
+        ? (s['SMART_ObsCategoryLabel'] as String? ?? 'Observation')
+        : type;
+
     return SmartWaypoint(
-      latitude: lat,
-      longitude: lon,
-      altitude: alt ?? (props['altitude'] as num?)?.toDouble(),
-      accuracy: (props['accuracy'] as num?)?.toDouble(),
-      observationType: props['type'] as String? ?? 'Waypoint',
-      photoUrl: props['photo'] as String? ?? props['photo_url'] as String?,
-      notes: props['notes'] as String? ?? props['description'] as String?,
-      timestamp: _parseDateTime(dateStr),
+      latitude:        lat,
+      longitude:       lon,
+      altitude:        alt,
+      accuracy:        (props['accuracy'] as num?)?.toDouble(),
+      observationType: obsType,
+      photoUrl:        photoUrl,
+      notes:           notes,
+      timestamp:       _parseDateTime(dateStr),
     );
   }
 
   static DateTime _parseDateTime(String s) {
-    try {
-      return DateTime.parse(s);
-    } catch (_) {
-      return DateTime.now();
-    }
+    try { return DateTime.parse(s); } catch (_) { return DateTime.now(); }
   }
 }
+
+// ── StopPatrol ────────────────────────────────────────────────────────────────
 
 class SmartStopPatrol {
   final DateTime endTime;
   final double? latitude;
   final double? longitude;
   final String? comments;
+  /// Distance in meters from SMART's own calculation (more accurate than haversine)
+  final double? smartDistanceMeters;
 
   const SmartStopPatrol({
     required this.endTime,
     this.latitude,
     this.longitude,
     this.comments,
+    this.smartDistanceMeters,
   });
 
   factory SmartStopPatrol.fromProps(
     Map<String, dynamic> props, {
+    Map<String, dynamic>? sighting,
     double? lat,
     double? lon,
   }) {
-    final dateStr = props['date'] as String? ??
+    final s = sighting ?? {};
+
+    final dateStr = props['dateTime'] as String? ??
+        props['date'] as String? ??
         props['end_date'] as String? ??
         DateTime.now().toIso8601String();
 
+    // SMART_PatrolLegDistance is in meters (float)
+    final distRaw = s['SMART_PatrolLegDistance'];
+    final distMeters = distRaw != null ? (distRaw as num).toDouble() : null;
+
     return SmartStopPatrol(
-      endTime: _parseDateTime(dateStr),
-      latitude: lat,
-      longitude: lon,
-      comments: props['comments'] as String?,
+      endTime:              _parseDateTime(dateStr),
+      latitude:             lat,
+      longitude:            lon,
+      comments:             props['comments'] as String?,
+      smartDistanceMeters:  distMeters,
     );
   }
 
   static DateTime _parseDateTime(String s) {
-    try {
-      return DateTime.parse(s);
-    } catch (_) {
-      return DateTime.now();
-    }
+    try { return DateTime.parse(s); } catch (_) { return DateTime.now(); }
   }
 }

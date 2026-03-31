@@ -70,13 +70,14 @@ class PatrolRepository {
           .select()
           .eq('id', id)
           .maybeSingle();
-      if (data == null) return null;
-      return Patrol.fromMap(data);
+      if (data != null) return Patrol.fromMap(data);
+      // Not found in Supabase → fall through to local cache
     } catch (_) {
-      final local = _patrolBox.get(id);
-      if (local == null) return null;
-      return Patrol.fromMap(Map<String, dynamic>.from(local));
+      // Network/RLS error → fall through to local cache
     }
+    final local = _patrolBox.get(id);
+    if (local == null) return null;
+    return Patrol.fromMap(Map<String, dynamic>.from(local));
   }
 
   Future<Patrol> createPatrol(Patrol patrol) async {
@@ -264,7 +265,9 @@ class PatrolRepository {
       latLngs.add(endWp.latLng);
     }
 
-    final totalDist = GeoUtils.totalDistance(latLngs);
+    // Prefer SMART's own distance calculation; fall back to haversine
+    final smartDist = smartData.stopPatrol?.smartDistanceMeters;
+    final totalDist = smartDist ?? GeoUtils.totalDistance(latLngs);
     final trackWkt = latLngs.length >= 2
         ? 'LINESTRING(${latLngs.map((p) => '${p.longitude} ${p.latitude}').join(', ')})'
         : null;

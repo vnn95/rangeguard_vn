@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -62,7 +63,12 @@ class _ImportPatrolScreenState extends ConsumerState<ImportPatrolScreen> {
   Future<void> _processJson(String jsonStr, String filename) async {
     setState(() => _isLoading = true);
     try {
-      final json = jsonDecode(jsonStr) as Map<String, dynamic>;
+      // Parse JSON on a background isolate to avoid janking the UI
+      // (real SMART files can be 6000+ features / several MB)
+      final json = await compute(
+        (String s) => jsonDecode(s) as Map<String, dynamic>,
+        jsonStr,
+      );
       final profile = ref.read(authNotifierProvider).valueOrNull;
       final repo = ref.read(patrolRepositoryProvider);
 
