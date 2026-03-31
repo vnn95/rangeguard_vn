@@ -47,7 +47,7 @@ GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated, service_role
 
 -- ── ADD: patrol_photos table (separate from waypoints for easier querying) ──
 CREATE TABLE IF NOT EXISTS patrol_photos (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   patrol_id UUID NOT NULL REFERENCES patrols(id) ON DELETE CASCADE,
   waypoint_id UUID REFERENCES waypoints(id) ON DELETE SET NULL,
   -- Storage

@@ -10,7 +10,7 @@
 
 DO $$
 DECLARE
-  v_user_id UUID := uuid_generate_v4();
+  v_user_id UUID := gen_random_uuid();
   v_email   TEXT := 'mazzda@gmail.com';
 BEGIN
   -- If email already exists, just update the password and role then exit
@@ -80,7 +80,7 @@ BEGIN
     created_at,
     updated_at
   ) VALUES (
-    uuid_generate_v4(),
+    gen_random_uuid(),
     v_email,
     v_user_id,
     jsonb_build_object('sub', v_user_id::text, 'email', v_email),

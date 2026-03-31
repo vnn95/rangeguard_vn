@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS profiles (
 
 -- ── Stations (Trạm kiểm lâm) ─────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS stations (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
   code TEXT,
   location GEOMETRY(POINT, 4326),
@@ -42,7 +42,7 @@ CREATE TABLE IF NOT EXISTS stations (
 
 -- ── Patrols (Chuyến tuần tra) ─────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS patrols (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   patrol_id TEXT NOT NULL,               -- SMART patrol ID
   leader_id UUID REFERENCES profiles(id),
   leader_name TEXT NOT NULL DEFAULT '',
@@ -72,7 +72,7 @@ CREATE TABLE IF NOT EXISTS patrols (
 
 -- ── Waypoints (Điểm GPS) ──────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS waypoints (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   patrol_id UUID NOT NULL REFERENCES patrols(id) ON DELETE CASCADE,
   latitude DOUBLE PRECISION NOT NULL,
   longitude DOUBLE PRECISION NOT NULL,
@@ -93,7 +93,7 @@ CREATE TABLE IF NOT EXISTS waypoints (
 
 -- ── Schedules (Lịch tuần tra) ────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS schedules (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   title TEXT NOT NULL,
   description TEXT,
   scheduled_date TIMESTAMPTZ NOT NULL,
@@ -118,7 +118,7 @@ CREATE TABLE IF NOT EXISTS schedules (
 
 -- ── Mandates (Mệnh lệnh / Nhiệm vụ) ────────────────────────────────
 CREATE TABLE IF NOT EXISTS mandates (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
   code TEXT,
   description TEXT,

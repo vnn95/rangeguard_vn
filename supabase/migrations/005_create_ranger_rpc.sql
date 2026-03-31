@@ -20,7 +20,7 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  v_user_id     UUID := uuid_generate_v4();
+  v_user_id     UUID := gen_random_uuid();
   v_caller_role TEXT;
 BEGIN
   -- ── 1. Only admins may call this function ───────────────────────
@@ -85,7 +85,7 @@ BEGIN
     id, provider_id, user_id, identity_data, provider,
     last_sign_in_at, created_at, updated_at
   ) VALUES (
-    uuid_generate_v4(),
+    gen_random_uuid(),
     lower(p_email),
     v_user_id,
     jsonb_build_object('sub', v_user_id::text, 'email', lower(p_email)),
