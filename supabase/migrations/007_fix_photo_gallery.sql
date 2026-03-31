@@ -3,10 +3,12 @@
 -- ═══════════════════════════════════════════════════════════════════════════
 
 -- ── 1. Fix photo_gallery view ─────────────────────────────────────────────
--- Original view had ORDER BY inside it, which PostgREST dislikes.
--- Remove ORDER BY here; the app applies .order() via PostgREST query.
+-- Must DROP first: CREATE OR REPLACE cannot remove columns from an existing view.
+-- Original view had pp.* (all columns) + ORDER BY, both problematic for PostgREST.
 
-CREATE OR REPLACE VIEW public.photo_gallery AS
+DROP VIEW IF EXISTS public.photo_gallery;
+
+CREATE VIEW public.photo_gallery AS
 SELECT
   pp.id,
   pp.patrol_id,
