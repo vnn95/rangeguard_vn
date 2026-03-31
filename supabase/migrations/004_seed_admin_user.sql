@@ -62,8 +62,10 @@ BEGIN
   );
 
   -- ── 2. Create identity (required for email/password login) ──────
+  -- provider_id = email address for email/password auth (required in Supabase ≥ 2.x)
   INSERT INTO auth.identities (
     id,
+    provider_id,
     user_id,
     identity_data,
     provider,
@@ -72,6 +74,7 @@ BEGIN
     updated_at
   ) VALUES (
     uuid_generate_v4(),
+    v_email,
     v_user_id,
     jsonb_build_object('sub', v_user_id::text, 'email', v_email),
     'email',
