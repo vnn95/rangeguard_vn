@@ -60,6 +60,13 @@ class AdminScreen extends ConsumerWidget {
             onTap: () => context.go('/admin/stations'),
           ),
           _AdminCard(
+            icon: Icons.category_outlined,
+            title: 'Danh mục hệ thống',
+            subtitle: 'Đơn vị, loại vi phạm, phương tiện, loài quan sát...',
+            color: const Color(0xFF1565C0),
+            onTap: () => context.go('/admin/categories'),
+          ),
+          _AdminCard(
             icon: Icons.photo_library_outlined,
             title: 'Thư viện ảnh',
             subtitle: 'Duyệt, tra cứu ảnh từ tất cả chuyến tuần tra',

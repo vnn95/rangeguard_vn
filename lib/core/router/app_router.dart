@@ -18,6 +18,8 @@ import 'package:rangeguard_vn/screens/admin/admin_screen.dart';
 import 'package:rangeguard_vn/screens/admin/ranger_management_screen.dart';
 import 'package:rangeguard_vn/screens/admin/photo_gallery_screen.dart';
 import 'package:rangeguard_vn/screens/admin/station_management_screen.dart';
+import 'package:rangeguard_vn/screens/admin/categories_screen.dart';
+import 'package:rangeguard_vn/screens/admin/unit_management_screen.dart';
 import 'package:rangeguard_vn/widgets/common/main_scaffold.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -128,6 +130,18 @@ final routerProvider = Provider<GoRouter>((ref) {
                 path: 'stations',
                 name: 'admin-stations',
                 builder: (_, __) => const StationManagementScreen(),
+              ),
+              GoRoute(
+                path: 'categories',
+                name: 'admin-categories',
+                builder: (_, __) => const CategoriesScreen(),
+                routes: [
+                  GoRoute(
+                    path: 'units',
+                    name: 'admin-units',
+                    builder: (_, __) => const UnitManagementScreen(),
+                  ),
+                ],
               ),
             ],
           ),
