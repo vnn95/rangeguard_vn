@@ -8,6 +8,8 @@
 -- After first login, change the password in Profile settings.
 -- ═══════════════════════════════════════════════════════════════════
 
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 DO $$
 DECLARE
   v_user_id UUID := gen_random_uuid();

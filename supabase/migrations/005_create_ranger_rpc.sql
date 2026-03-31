@@ -4,6 +4,9 @@
 -- SECURITY DEFINER so it can write to auth.users from client context
 -- ═══════════════════════════════════════════════════════════════════
 
+-- Required for crypt() and gen_salt()
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 CREATE OR REPLACE FUNCTION create_ranger_account(
   p_email       TEXT,
   p_password    TEXT,
