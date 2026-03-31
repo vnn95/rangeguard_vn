@@ -66,14 +66,14 @@ class AppSettings {
 }
 
 class SettingsNotifier extends StateNotifier<AppSettings> {
-  late Box _box;
+  // Box opened at app startup in main.dart – access synchronously
+  Box get _box => Hive.box(AppConstants.settingsBox);
 
   SettingsNotifier() : super(const AppSettings()) {
     _load();
   }
 
-  Future<void> _load() async {
-    _box = await Hive.openBox(AppConstants.settingsBox);
+  void _load() {
     final raw = _box.get('settings');
     if (raw != null) {
       state = AppSettings.fromMap(Map<String, dynamic>.from(raw));

@@ -150,8 +150,8 @@ class AuthRepository {
     return data.map((e) => UserProfile.fromMap(e)).toList();
   }
 
-  /// Admin tạo tài khoản tuần tra viên mới.
-  /// Dùng client riêng để không ảnh hưởng session admin hiện tại.
+  /// Admin tạo tài khoản tuần tra viên mới qua RPC server-side.
+  /// Không dùng client phụ → tránh lỗi PKCE async storage.
   Future<UserProfile> createRanger({
     required String email,
     required String password,
@@ -162,57 +162,26 @@ class AuthRepository {
     String? phone,
     String? stationId,
   }) async {
-    // Tạo client riêng (không dùng session admin).
-    // Dùng implicit flow vì PKCE cần Flutter async storage.
-    final tempClient = SupabaseClient(
-      SupabaseConfig.url,
-      SupabaseConfig.anonKey,
-      authOptions: const AuthClientOptions(
-        authFlowType: AuthFlowType.implicit,
-      ),
-    );
-    try {
-      final response = await tempClient.auth.signUp(
-        email: email,
-        password: password,
-        data: {
-          'full_name': fullName,
-          'employee_id': employeeId,
-          'unit': unit,
-          'role': role,
-        },
-      );
+    // Gọi hàm SECURITY DEFINER trên Supabase – tạo auth.users +
+    // auth.identities + profiles trong một transaction duy nhất.
+    final newUserId = await _client.rpc('create_ranger_account', params: {
+      'p_email':       email.trim().toLowerCase(),
+      'p_password':    password,
+      'p_full_name':   fullName.trim(),
+      'p_employee_id': employeeId.trim(),
+      'p_unit':        unit.trim(),
+      'p_role':        role,
+      'p_phone':       phone?.trim(),
+      'p_station_id':  stationId,
+    });
 
-      if (response.user == null) {
-        throw Exception('Tạo tài khoản thất bại – vui lòng thử lại');
-      }
-
-      // Upsert profile với đầy đủ thông tin (trigger đã tạo profile cơ bản)
-      final now = DateTime.now();
-      final data = await _client
-          .from(AppConstants.profilesTable)
-          .upsert(
-            {
-              'id': response.user!.id,
-              'email': email,
-              'full_name': fullName,
-              'employee_id': employeeId,
-              'unit': unit,
-              'role': role,
-              'phone': phone,
-              'station_id': stationId,
-              'is_active': true,
-              'created_at': now.toUtc().toIso8601String(),
-              'updated_at': now.toUtc().toIso8601String(),
-            },
-            onConflict: 'id',
-          )
-          .select()
-          .single();
-      return UserProfile.fromMap(data);
-    } finally {
-      await tempClient.dispose();
-    }
+    // Trả về profile vừa tạo
+    final data = await _client
+        .from(AppConstants.profilesTable)
+        .select()
+        .eq('id', newUserId as String)
+        .single();
+    return UserProfile.fromMap(data);
   }
 
   Future<void> toggleRangerActive(String id, bool isActive) async {
