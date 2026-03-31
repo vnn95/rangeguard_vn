@@ -17,6 +17,7 @@ import 'package:rangeguard_vn/screens/profile/profile_screen.dart';
 import 'package:rangeguard_vn/screens/admin/admin_screen.dart';
 import 'package:rangeguard_vn/screens/admin/ranger_management_screen.dart';
 import 'package:rangeguard_vn/screens/admin/photo_gallery_screen.dart';
+import 'package:rangeguard_vn/screens/admin/station_management_screen.dart';
 import 'package:rangeguard_vn/widgets/common/main_scaffold.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -122,6 +123,11 @@ final routerProvider = Provider<GoRouter>((ref) {
                 builder: (_, state) => PhotoGalleryScreen(
                   patrolId: state.uri.queryParameters['patrol_id'],
                 ),
+              ),
+              GoRoute(
+                path: 'stations',
+                name: 'admin-stations',
+                builder: (_, __) => const StationManagementScreen(),
               ),
             ],
           ),
