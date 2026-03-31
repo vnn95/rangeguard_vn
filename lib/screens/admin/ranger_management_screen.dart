@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rangeguard_vn/core/constants/app_colors.dart';
-import 'package:rangeguard_vn/core/utils/date_utils.dart';
 import 'package:rangeguard_vn/models/user_model.dart';
 import 'package:rangeguard_vn/providers/auth_provider.dart';
-import 'package:rangeguard_vn/repositories/auth_repository.dart';
 import 'package:rangeguard_vn/core/constants/app_constants.dart';
 import 'package:rangeguard_vn/widgets/common/app_loading.dart';
 
@@ -294,15 +292,18 @@ class _RangerManagementScreenState
   Future<void> _showAddDialog() async {
     final formKey = GlobalKey<FormState>();
     final nameCtrl = TextEditingController();
+    final emailCtrl = TextEditingController();
+    final passwordCtrl = TextEditingController();
     final empIdCtrl = TextEditingController();
     final unitCtrl = TextEditingController();
     final phoneCtrl = TextEditingController();
     String role = AppConstants.roleRanger;
+    bool obscure = true;
 
     await showDialog(
       context: context,
       builder: (_) => StatefulBuilder(
-        builder: (ctx, setState) => AlertDialog(
+        builder: (ctx, setDlgState) => AlertDialog(
           title: const Text('Thêm tuần tra viên'),
           content: SingleChildScrollView(
             child: Form(
@@ -312,36 +313,49 @@ class _RangerManagementScreenState
                 children: [
                   TextFormField(
                     controller: nameCtrl,
-                    decoration: const InputDecoration(labelText: 'Họ và tên *'),
+                    decoration: const InputDecoration(
+                      labelText: 'Họ và tên *',
+                      prefixIcon: Icon(Icons.person_outline),
+                    ),
                     validator: (v) =>
-                        v?.isEmpty == true ? 'Bắt buộc' : null,
+                        v?.trim().isEmpty == true ? 'Bắt buộc' : null,
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: empIdCtrl,
-                    decoration:
-                        const InputDecoration(labelText: 'Mã nhân viên *'),
+                    decoration: const InputDecoration(
+                      labelText: 'Mã nhân viên *',
+                      prefixIcon: Icon(Icons.badge_outlined),
+                    ),
                     validator: (v) =>
-                        v?.isEmpty == true ? 'Bắt buộc' : null,
+                        v?.trim().isEmpty == true ? 'Bắt buộc' : null,
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: unitCtrl,
-                    decoration: const InputDecoration(labelText: 'Đơn vị *'),
+                    decoration: const InputDecoration(
+                      labelText: 'Đơn vị *',
+                      prefixIcon: Icon(Icons.business_outlined),
+                    ),
                     validator: (v) =>
-                        v?.isEmpty == true ? 'Bắt buộc' : null,
+                        v?.trim().isEmpty == true ? 'Bắt buộc' : null,
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: phoneCtrl,
                     keyboardType: TextInputType.phone,
-                    decoration:
-                        const InputDecoration(labelText: 'Số điện thoại'),
+                    decoration: const InputDecoration(
+                      labelText: 'Số điện thoại',
+                      prefixIcon: Icon(Icons.phone_outlined),
+                    ),
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
-                    value: role,
-                    decoration: const InputDecoration(labelText: 'Vai trò'),
+                    initialValue: role,
+                    decoration: const InputDecoration(
+                      labelText: 'Vai trò',
+                      prefixIcon: Icon(Icons.manage_accounts_outlined),
+                    ),
                     items: const [
                       DropdownMenuItem(
                           value: AppConstants.roleRanger,
@@ -353,7 +367,55 @@ class _RangerManagementScreenState
                           value: AppConstants.roleViewer,
                           child: Text('Xem báo cáo')),
                     ],
-                    onChanged: (v) => setState(() => role = v!),
+                    onChanged: (v) => setDlgState(() => role = v!),
+                  ),
+                  const Divider(height: 24),
+                  const Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Tài khoản đăng nhập',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
+                        color: AppColors.primaryDark,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  TextFormField(
+                    controller: emailCtrl,
+                    keyboardType: TextInputType.emailAddress,
+                    decoration: const InputDecoration(
+                      labelText: 'Email *',
+                      prefixIcon: Icon(Icons.email_outlined),
+                    ),
+                    validator: (v) {
+                      if (v?.trim().isEmpty == true) return 'Bắt buộc';
+                      if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(v!.trim())) {
+                        return 'Email không hợp lệ';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: passwordCtrl,
+                    obscureText: obscure,
+                    decoration: InputDecoration(
+                      labelText: 'Mật khẩu * (ít nhất 6 ký tự)',
+                      prefixIcon: const Icon(Icons.lock_outline),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                            obscure ? Icons.visibility_off : Icons.visibility),
+                        onPressed: () =>
+                            setDlgState(() => obscure = !obscure),
+                      ),
+                    ),
+                    validator: (v) {
+                      if (v?.isEmpty == true) return 'Bắt buộc';
+                      if ((v?.length ?? 0) < 6) return 'Ít nhất 6 ký tự';
+                      return null;
+                    },
                   ),
                 ],
               ),
@@ -369,6 +431,8 @@ class _RangerManagementScreenState
                 if (!formKey.currentState!.validate()) return;
                 try {
                   await ref.read(authRepositoryProvider).createRanger(
+                        email: emailCtrl.text.trim(),
+                        password: passwordCtrl.text,
                         fullName: nameCtrl.text.trim(),
                         employeeId: empIdCtrl.text.trim(),
                         unit: unitCtrl.text.trim(),
@@ -382,7 +446,7 @@ class _RangerManagementScreenState
                     Navigator.pop(ctx);
                     ScaffoldMessenger.of(ctx).showSnackBar(
                       const SnackBar(
-                        content: Text('Đã thêm tuần tra viên'),
+                        content: Text('Đã thêm tuần tra viên thành công'),
                         backgroundColor: AppColors.success,
                       ),
                     );

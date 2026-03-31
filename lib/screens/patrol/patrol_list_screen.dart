@@ -77,11 +77,29 @@ class _PatrolListScreenState extends ConsumerState<PatrolListScreen> {
             child: Row(
               children: [
                 _FilterChip(
-                  label:
-                      '${AppDateUtils.formatDate(filter.from ?? DateTime.now())} - ${AppDateUtils.formatDate(filter.to ?? DateTime.now())}',
+                  label: filter.from == null && filter.to == null
+                      ? 'Tất cả thời gian'
+                      : '${filter.from != null ? AppDateUtils.formatDate(filter.from!) : '...'}'
+                          ' – ${filter.to != null ? AppDateUtils.formatDate(filter.to!) : '...'}',
                   icon: Icons.date_range,
+                  active: filter.from != null || filter.to != null,
                   onTap: () => _showFilterDialog(context),
                 ),
+                if (filter.from != null || filter.to != null)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 4),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(20),
+                      onTap: () => ref
+                          .read(patrolFilterProvider.notifier)
+                          .state = const PatrolFilter(),
+                      child: const Padding(
+                        padding: EdgeInsets.all(4),
+                        child: Icon(Icons.close,
+                            size: 16, color: AppColors.primary),
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -136,64 +154,186 @@ class _PatrolListScreenState extends ConsumerState<PatrolListScreen> {
   }
 
   void _showFilterDialog(BuildContext context) {
-    final filter = ref.read(patrolFilterProvider);
-    DateTime? from = filter.from;
-    DateTime? to = filter.to;
+    final current = ref.read(patrolFilterProvider);
+    DateTime? from = current.from;
+    DateTime? to = current.to;
+    final now = DateTime.now();
 
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Lọc tuần tra'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.date_range),
-              title: const Text('Từ ngày'),
-              subtitle: Text(from != null ? AppDateUtils.formatDate(from!) : 'Tất cả'),
-              onTap: () async {
-                final picked = await showDatePicker(
-                  context: ctx,
-                  initialDate: from ?? DateTime.now(),
-                  firstDate: DateTime(2020),
-                  lastDate: DateTime.now(),
-                );
-                if (picked != null) from = picked;
-              },
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDlgState) {
+          void pickShortcut(DateTime f, DateTime t) {
+            setDlgState(() { from = f; to = t; });
+          }
+
+          return AlertDialog(
+            title: const Text('Lọc theo thời gian'),
+            content: SizedBox(
+              width: 340,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // ── Quick shortcuts ─────────────────────────────
+                  const Text('Chọn nhanh',
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.primaryDark)),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    children: [
+                      _QuickChip(
+                        label: 'Tháng này',
+                        onTap: () => pickShortcut(
+                          DateTime(now.year, now.month, 1),
+                          DateTime(now.year, now.month + 1, 0),
+                        ),
+                      ),
+                      _QuickChip(
+                        label: 'Tháng trước',
+                        onTap: () => pickShortcut(
+                          DateTime(now.year, now.month - 1, 1),
+                          DateTime(now.year, now.month, 0),
+                        ),
+                      ),
+                      _QuickChip(
+                        label: 'Quý này',
+                        onTap: () {
+                          final q = ((now.month - 1) ~/ 3) * 3 + 1;
+                          pickShortcut(
+                            DateTime(now.year, q, 1),
+                            DateTime(now.year, q + 3, 0),
+                          );
+                        },
+                      ),
+                      _QuickChip(
+                        label: 'Năm nay',
+                        onTap: () => pickShortcut(
+                          DateTime(now.year, 1, 1),
+                          DateTime(now.year, 12, 31),
+                        ),
+                      ),
+                      _QuickChip(
+                        label: 'Năm ngoái',
+                        onTap: () => pickShortcut(
+                          DateTime(now.year - 1, 1, 1),
+                          DateTime(now.year - 1, 12, 31),
+                        ),
+                      ),
+                      // Year shortcuts for older data
+                      for (int y = now.year - 2; y >= 2020; y--)
+                        _QuickChip(
+                          label: 'Năm $y',
+                          onTap: () => pickShortcut(
+                            DateTime(y, 1, 1),
+                            DateTime(y, 12, 31),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const Divider(height: 24),
+
+                  // ── Custom date range ───────────────────────────
+                  const Text('Chọn khoảng ngày tùy chọn',
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.primaryDark)),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          icon: const Icon(Icons.calendar_today, size: 14),
+                          label: Text(
+                            from != null
+                                ? AppDateUtils.formatDate(from!)
+                                : 'Từ ngày',
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                          onPressed: () async {
+                            final picked = await showDatePicker(
+                              context: ctx,
+                              initialDate: from ?? DateTime(2020),
+                              firstDate: DateTime(2015),
+                              lastDate: DateTime.now(),
+                            );
+                            if (picked != null) {
+                              setDlgState(() => from = picked);
+                            }
+                          },
+                        ),
+                      ),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 6),
+                        child: Text('–',
+                            style: TextStyle(color: Colors.grey)),
+                      ),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          icon: const Icon(Icons.calendar_today, size: 14),
+                          label: Text(
+                            to != null
+                                ? AppDateUtils.formatDate(to!)
+                                : 'Đến ngày',
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                          onPressed: () async {
+                            final picked = await showDatePicker(
+                              context: ctx,
+                              initialDate: to ?? DateTime.now(),
+                              firstDate: DateTime(2015),
+                              lastDate: now
+                                  .add(const Duration(days: 365)),
+                            );
+                            if (picked != null) {
+                              setDlgState(() => to = picked);
+                            }
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (from != null || to != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(
+                        from != null && to != null
+                            ? '${AppDateUtils.formatDate(from!)}  →  ${AppDateUtils.formatDate(to!)}'
+                            : from != null
+                                ? 'Từ ${AppDateUtils.formatDate(from!)}'
+                                : 'Đến ${AppDateUtils.formatDate(to!)}',
+                        style: const TextStyle(
+                            fontSize: 12, color: AppColors.primary),
+                      ),
+                    ),
+                ],
+              ),
             ),
-            ListTile(
-              leading: const Icon(Icons.date_range),
-              title: const Text('Đến ngày'),
-              subtitle: Text(to != null ? AppDateUtils.formatDate(to!) : 'Tất cả'),
-              onTap: () async {
-                final picked = await showDatePicker(
-                  context: ctx,
-                  initialDate: to ?? DateTime.now(),
-                  firstDate: DateTime(2020),
-                  lastDate: DateTime.now().add(const Duration(days: 365)),
-                );
-                if (picked != null) to = picked;
-              },
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              ref.read(patrolFilterProvider.notifier).state = const PatrolFilter();
-              Navigator.pop(ctx);
-            },
-            child: const Text('Xóa lọc'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              ref.read(patrolFilterProvider.notifier).state =
-                  PatrolFilter(from: from, to: to);
-              Navigator.pop(ctx);
-            },
-            child: const Text('Áp dụng'),
-          ),
-        ],
+            actions: [
+              TextButton(
+                onPressed: () {
+                  ref.read(patrolFilterProvider.notifier).state =
+                      const PatrolFilter();
+                  Navigator.pop(ctx);
+                },
+                child: const Text('Xóa lọc'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  ref.read(patrolFilterProvider.notifier).state =
+                      PatrolFilter(from: from, to: to);
+                  Navigator.pop(ctx);
+                },
+                child: const Text('Áp dụng'),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -202,11 +342,13 @@ class _PatrolListScreenState extends ConsumerState<PatrolListScreen> {
 class _FilterChip extends StatelessWidget {
   final String label;
   final IconData icon;
+  final bool active;
   final VoidCallback onTap;
 
   const _FilterChip({
     required this.label,
     required this.icon,
+    this.active = false,
     required this.onTap,
   });
 
@@ -217,8 +359,13 @@ class _FilterChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: AppColors.primaryContainer,
+          color: active
+              ? AppColors.primary.withValues(alpha: 0.12)
+              : AppColors.primaryContainer,
           borderRadius: BorderRadius.circular(20),
+          border: active
+              ? Border.all(color: AppColors.primary.withValues(alpha: 0.4))
+              : null,
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -227,10 +374,10 @@ class _FilterChip extends StatelessWidget {
             const SizedBox(width: 6),
             Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 color: AppColors.primary,
                 fontSize: 12,
-                fontWeight: FontWeight.w600,
+                fontWeight: active ? FontWeight.w700 : FontWeight.w600,
               ),
             ),
           ],
@@ -238,6 +385,22 @@ class _FilterChip extends StatelessWidget {
       ),
     );
   }
+}
+
+class _QuickChip extends StatelessWidget {
+  final String label;
+  final VoidCallback onTap;
+  const _QuickChip({required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) => ActionChip(
+        label: Text(label, style: const TextStyle(fontSize: 11)),
+        onPressed: onTap,
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        visualDensity: VisualDensity.compact,
+        backgroundColor: AppColors.primaryContainer,
+        labelStyle: const TextStyle(color: AppColors.primary),
+      );
 }
 
 class _PatrolListCard extends StatelessWidget {
@@ -265,7 +428,7 @@ class _PatrolListCard extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: statusColor.withOpacity(0.1),
+                      color: statusColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
@@ -282,7 +445,7 @@ class _PatrolListCard extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
-                      color: statusColor.withOpacity(0.1),
+                      color: statusColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(

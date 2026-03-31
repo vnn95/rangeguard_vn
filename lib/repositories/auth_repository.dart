@@ -150,7 +150,11 @@ class AuthRepository {
     return data.map((e) => UserProfile.fromMap(e)).toList();
   }
 
+  /// Admin tạo tài khoản tuần tra viên mới.
+  /// Dùng client riêng để không ảnh hưởng session admin hiện tại.
   Future<UserProfile> createRanger({
+    required String email,
+    required String password,
     required String fullName,
     required String employeeId,
     required String unit,
@@ -158,26 +162,53 @@ class AuthRepository {
     String? phone,
     String? stationId,
   }) async {
-    // Admin tạo ranger mà không cần email/password
-    final id = employeeId.replaceAll(' ', '_').toLowerCase();
-    final now = DateTime.now();
-    final data = await _client
-        .from(AppConstants.profilesTable)
-        .insert({
-          'id': '00000000-0000-0000-0000-${id.padLeft(12, '0').substring(0, 12)}',
-          'email': '$employeeId@rangeguard.local',
+    // Tạo client riêng (không dùng session admin)
+    final tempClient = SupabaseClient(
+      SupabaseConfig.url,
+      SupabaseConfig.anonKey,
+    );
+    try {
+      final response = await tempClient.auth.signUp(
+        email: email,
+        password: password,
+        data: {
           'full_name': fullName,
           'employee_id': employeeId,
           'unit': unit,
           'role': role,
-          'phone': phone,
-          'station_id': stationId,
-          'is_active': true,
-          'created_at': now.toUtc().toIso8601String(),
-        })
-        .select()
-        .single();
-    return UserProfile.fromMap(data);
+        },
+      );
+
+      if (response.user == null) {
+        throw Exception('Tạo tài khoản thất bại – vui lòng thử lại');
+      }
+
+      // Upsert profile với đầy đủ thông tin (trigger đã tạo profile cơ bản)
+      final now = DateTime.now();
+      final data = await _client
+          .from(AppConstants.profilesTable)
+          .upsert(
+            {
+              'id': response.user!.id,
+              'email': email,
+              'full_name': fullName,
+              'employee_id': employeeId,
+              'unit': unit,
+              'role': role,
+              'phone': phone,
+              'station_id': stationId,
+              'is_active': true,
+              'created_at': now.toUtc().toIso8601String(),
+              'updated_at': now.toUtc().toIso8601String(),
+            },
+            onConflict: 'id',
+          )
+          .select()
+          .single();
+      return UserProfile.fromMap(data);
+    } finally {
+      await tempClient.dispose();
+    }
   }
 
   Future<void> toggleRangerActive(String id, bool isActive) async {

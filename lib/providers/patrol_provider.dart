@@ -38,11 +38,7 @@ class PatrolFilter {
 }
 
 final patrolFilterProvider = StateProvider<PatrolFilter>((ref) {
-  final now = DateTime.now();
-  return PatrolFilter(
-    from: DateTime(now.year, now.month, 1),
-    to: DateTime(now.year, now.month + 1, 0),
-  );
+  return const PatrolFilter(); // no date restriction by default – show all patrols
 });
 
 final patrolsProvider = FutureProvider<List<Patrol>>((ref) async {
