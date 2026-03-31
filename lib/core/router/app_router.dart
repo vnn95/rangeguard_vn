@@ -14,6 +14,9 @@ import 'package:rangeguard_vn/screens/schedule/schedule_screen.dart';
 import 'package:rangeguard_vn/screens/reports/reports_screen.dart';
 import 'package:rangeguard_vn/screens/settings/settings_screen.dart';
 import 'package:rangeguard_vn/screens/profile/profile_screen.dart';
+import 'package:rangeguard_vn/screens/admin/admin_screen.dart';
+import 'package:rangeguard_vn/screens/admin/ranger_management_screen.dart';
+import 'package:rangeguard_vn/screens/admin/photo_gallery_screen.dart';
 import 'package:rangeguard_vn/widgets/common/main_scaffold.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -21,7 +24,7 @@ final routerProvider = Provider<GoRouter>((ref) {
 
   return GoRouter(
     initialLocation: '/dashboard',
-    debugLogDiagnostics: true,
+    debugLogDiagnostics: false,
     redirect: (context, state) {
       final isLoggedIn = authState.value?.session != null;
       final isAuthRoute = state.matchedLocation.startsWith('/auth');
@@ -31,83 +34,102 @@ final routerProvider = Provider<GoRouter>((ref) {
       return null;
     },
     routes: [
-      // Auth routes
+      // Auth routes (không có shell)
       GoRoute(
         path: '/auth/login',
         name: 'login',
-        builder: (context, state) => const LoginScreen(),
+        builder: (_, __) => const LoginScreen(),
       ),
       GoRoute(
         path: '/auth/register',
         name: 'register',
-        builder: (context, state) => const RegisterScreen(),
+        builder: (_, __) => const RegisterScreen(),
       ),
 
-      // Main shell with navigation
+      // Main shell with bottom nav / rail
       ShellRoute(
-        builder: (context, state, child) => MainScaffold(child: child),
+        builder: (_, __, child) => MainScaffold(child: child),
         routes: [
           GoRoute(
             path: '/dashboard',
             name: 'dashboard',
-            builder: (context, state) => const DashboardScreen(),
+            builder: (_, __) => const DashboardScreen(),
           ),
           GoRoute(
             path: '/map',
             name: 'map',
-            builder: (context, state) => const MapScreen(),
+            builder: (_, __) => const MapScreen(),
           ),
           GoRoute(
             path: '/patrols',
             name: 'patrols',
-            builder: (context, state) => const PatrolListScreen(),
+            builder: (_, __) => const PatrolListScreen(),
             routes: [
               GoRoute(
                 path: ':id',
                 name: 'patrol-detail',
-                builder: (context, state) => PatrolDetailScreen(
+                builder: (_, state) => PatrolDetailScreen(
                   patrolId: state.pathParameters['id']!,
                 ),
               ),
               GoRoute(
                 path: 'start',
                 name: 'start-patrol',
-                builder: (context, state) => const StartPatrolScreen(),
+                builder: (_, __) => const StartPatrolScreen(),
               ),
               GoRoute(
                 path: 'import',
                 name: 'import-patrol',
-                builder: (context, state) => const ImportPatrolScreen(),
+                builder: (_, __) => const ImportPatrolScreen(),
               ),
             ],
           ),
           GoRoute(
             path: '/schedule',
             name: 'schedule',
-            builder: (context, state) => const ScheduleScreen(),
+            builder: (_, __) => const ScheduleScreen(),
           ),
           GoRoute(
             path: '/reports',
             name: 'reports',
-            builder: (context, state) => const ReportsScreen(),
+            builder: (_, __) => const ReportsScreen(),
           ),
           GoRoute(
             path: '/settings',
             name: 'settings',
-            builder: (context, state) => const SettingsScreen(),
+            builder: (_, __) => const SettingsScreen(),
           ),
           GoRoute(
             path: '/profile',
             name: 'profile',
-            builder: (context, state) => const ProfileScreen(),
+            builder: (_, __) => const ProfileScreen(),
+          ),
+
+          // ── Admin routes ──────────────────────────────────────────
+          GoRoute(
+            path: '/admin',
+            name: 'admin',
+            builder: (_, __) => const AdminScreen(),
+            routes: [
+              GoRoute(
+                path: 'rangers',
+                name: 'admin-rangers',
+                builder: (_, __) => const RangerManagementScreen(),
+              ),
+              GoRoute(
+                path: 'photos',
+                name: 'admin-photos',
+                builder: (_, state) => PhotoGalleryScreen(
+                  patrolId: state.uri.queryParameters['patrol_id'],
+                ),
+              ),
+            ],
           ),
         ],
       ),
     ],
-    errorBuilder: (context, state) => Scaffold(
-      body: Center(
-        child: Text('Trang không tồn tại: ${state.error}'),
-      ),
+    errorBuilder: (_, state) => Scaffold(
+      body: Center(child: Text('Trang không tồn tại: ${state.error}')),
     ),
   );
 });

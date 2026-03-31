@@ -1,8 +1,11 @@
 import 'dart:typed_data';
+import 'package:logger/logger.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:rangeguard_vn/core/supabase/supabase_config.dart';
 import 'package:rangeguard_vn/core/constants/app_constants.dart';
 import 'package:rangeguard_vn/models/user_model.dart';
+
+final _log = Logger();
 
 class AuthRepository {
   SupabaseClient get _client => SupabaseConfig.client;
@@ -25,6 +28,8 @@ class AuthRepository {
     required String unit,
     String role = AppConstants.roleRanger,
   }) async {
+    // Bước 1: Tạo user trong Supabase Auth
+    // Trigger handle_new_user() sẽ tự tạo profile cơ bản
     final response = await _client.auth.signUp(
       email: email,
       password: password,
@@ -36,17 +41,28 @@ class AuthRepository {
       },
     );
 
+    // Bước 2: Upsert profile với đầy đủ thông tin
+    // Dùng try/catch vì trigger đã tạo profile rồi (tránh conflict)
     if (response.user != null) {
-      await _client.from(AppConstants.profilesTable).upsert({
-        'id': response.user!.id,
-        'email': email,
-        'full_name': fullName,
-        'employee_id': employeeId,
-        'unit': unit,
-        'role': role,
-        'is_active': true,
-        'created_at': DateTime.now().toUtc().toIso8601String(),
-      });
+      try {
+        await _client.from(AppConstants.profilesTable).upsert(
+          {
+            'id': response.user!.id,
+            'email': email,
+            'full_name': fullName,
+            'employee_id': employeeId,
+            'unit': unit,
+            'role': role,
+            'is_active': true,
+            'created_at': DateTime.now().toUtc().toIso8601String(),
+          },
+          onConflict: 'id',
+        );
+      } catch (e) {
+        // Không throw ở đây - user đã tạo thành công trong auth
+        // Profile sẽ được sync lần sau
+        _log.w('Profile upsert after signup failed (non-critical): $e');
+      }
     }
 
     return response;
@@ -64,14 +80,56 @@ class AuthRepository {
     final user = _client.auth.currentUser;
     if (user == null) return null;
 
-    final data = await _client
-        .from(AppConstants.profilesTable)
-        .select()
-        .eq('id', user.id)
-        .maybeSingle();
+    try {
+      final data = await _client
+          .from(AppConstants.profilesTable)
+          .select()
+          .eq('id', user.id)
+          .maybeSingle();
 
-    if (data == null) return null;
-    return UserProfile.fromMap(data);
+      if (data == null) {
+        // Profile chưa có → tạo từ auth metadata
+        return await _createProfileFromAuth(user);
+      }
+      return UserProfile.fromMap(data);
+    } catch (e) {
+      _log.e('getCurrentProfile error: $e');
+      // Fallback: trả về profile tạm từ auth data
+      return UserProfile(
+        id: user.id,
+        email: user.email ?? '',
+        fullName: user.userMetadata?['full_name'] as String? ?? '',
+        employeeId: user.userMetadata?['employee_id'] as String? ?? '',
+        unit: user.userMetadata?['unit'] as String? ?? '',
+        role: user.userMetadata?['role'] as String? ?? AppConstants.roleRanger,
+        createdAt: DateTime.now(),
+      );
+    }
+  }
+
+  Future<UserProfile?> _createProfileFromAuth(User user) async {
+    final meta = user.userMetadata ?? {};
+    try {
+      final data = await _client
+          .from(AppConstants.profilesTable)
+          .upsert({
+            'id': user.id,
+            'email': user.email ?? '',
+            'full_name': meta['full_name'] as String? ?? '',
+            'employee_id': meta['employee_id'] as String? ?? '',
+            'unit': meta['unit'] as String? ?? '',
+            'role': meta['role'] as String? ?? AppConstants.roleRanger,
+            'is_active': true,
+            'created_at': DateTime.now().toUtc().toIso8601String(),
+          }, onConflict: 'id')
+          .select()
+          .maybeSingle();
+      if (data == null) return null;
+      return UserProfile.fromMap(data);
+    } catch (e) {
+      _log.e('_createProfileFromAuth error: $e');
+      return null;
+    }
   }
 
   Future<UserProfile> updateProfile(UserProfile profile) async {
@@ -88,13 +146,49 @@ class AuthRepository {
     final data = await _client
         .from(AppConstants.profilesTable)
         .select()
-        .eq('is_active', true)
         .order('full_name');
     return data.map((e) => UserProfile.fromMap(e)).toList();
   }
 
-  Future<String?> uploadAvatar(String userId, Uint8List bytes,
-      String fileName) async {
+  Future<UserProfile> createRanger({
+    required String fullName,
+    required String employeeId,
+    required String unit,
+    String role = AppConstants.roleRanger,
+    String? phone,
+    String? stationId,
+  }) async {
+    // Admin tạo ranger mà không cần email/password
+    final id = employeeId.replaceAll(' ', '_').toLowerCase();
+    final now = DateTime.now();
+    final data = await _client
+        .from(AppConstants.profilesTable)
+        .insert({
+          'id': '00000000-0000-0000-0000-${id.padLeft(12, '0').substring(0, 12)}',
+          'email': '$employeeId@rangeguard.local',
+          'full_name': fullName,
+          'employee_id': employeeId,
+          'unit': unit,
+          'role': role,
+          'phone': phone,
+          'station_id': stationId,
+          'is_active': true,
+          'created_at': now.toUtc().toIso8601String(),
+        })
+        .select()
+        .single();
+    return UserProfile.fromMap(data);
+  }
+
+  Future<void> toggleRangerActive(String id, bool isActive) async {
+    await _client
+        .from(AppConstants.profilesTable)
+        .update({'is_active': isActive})
+        .eq('id', id);
+  }
+
+  Future<String?> uploadAvatar(
+      String userId, Uint8List bytes, String fileName) async {
     final path = '$userId/avatar/$fileName';
     await _client.storage.from('avatars').uploadBinary(
           path,

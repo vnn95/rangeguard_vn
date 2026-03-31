@@ -1,3 +1,4 @@
+import 'package:logger/logger.dart';
 import 'package:uuid/uuid.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -8,6 +9,9 @@ import 'package:rangeguard_vn/core/utils/offline_sync.dart';
 import 'package:rangeguard_vn/models/patrol_model.dart';
 import 'package:rangeguard_vn/models/waypoint_model.dart';
 import 'package:rangeguard_vn/models/smart_import_model.dart';
+import 'package:rangeguard_vn/repositories/photo_repository.dart';
+
+final _log = Logger();
 
 class PatrolRepository {
   final _uuid = const Uuid();
@@ -290,6 +294,26 @@ class PatrolRepository {
 
     await createPatrol(patrol);
     await addWaypointsBatch(waypoints);
+
+    // ── Trích xuất và lưu ảnh từ waypoints ──────────────────────────
+    // Lưu riêng vào bảng patrol_photos để tra cứu dễ dàng
+    final photoRepo = PhotoRepository();
+    final waypointMaps = waypoints.map((w) => {
+      ...w.toMap(),
+      'id': w.id,
+    }).toList();
+    try {
+      final photoCount = await photoRepo.extractPhotosFromWaypoints(
+        patrolId: patrolId,
+        waypointMaps: waypointMaps,
+        uploadedBy: createdBy,
+      );
+      if (photoCount > 0) {
+        _log.i('Extracted $photoCount photos from patrol $patrolId');
+      }
+    } catch (e) {
+      _log.w('Photo extraction failed (non-critical): $e');
+    }
 
     return patrol;
   }

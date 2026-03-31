@@ -3,6 +3,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:rangeguard_vn/core/constants/app_colors.dart';
 import 'package:rangeguard_vn/providers/auth_provider.dart';
 import 'package:rangeguard_vn/providers/patrol_provider.dart';
@@ -17,6 +18,7 @@ class ImportPatrolScreen extends ConsumerStatefulWidget {
 class _ImportPatrolScreenState extends ConsumerState<ImportPatrolScreen> {
   bool _isLoading = false;
   String? _lastImportInfo;
+  String? _lastPatrolId;
 
   Future<void> _importFromFile() async {
     final result = await FilePicker.platform.pickFiles(
@@ -65,13 +67,22 @@ class _ImportPatrolScreenState extends ConsumerState<ImportPatrolScreen> {
       ref.invalidate(patrolsProvider);
       ref.invalidate(patrolStatsProvider);
 
+      _lastPatrolId = patrol.id;
       setState(() {
+        final dist = (patrol.totalDistanceMeters ?? 0) / 1000;
+        final dur = patrol.duration;
+        final durStr = dur != null
+            ? '${dur.inHours}h ${dur.inMinutes.remainder(60)}m'
+            : '--';
         _lastImportInfo =
-            'Import thành công từ "$filename"\n'
+            'File: $filename\n'
             'PatrolID: ${patrol.patrolId}\n'
             'Trưởng đội: ${patrol.leaderName}\n'
-            'Điểm GPS: ${patrol.totalWaypoints}\n'
-            'Quãng đường: ${((patrol.totalDistanceMeters ?? 0) / 1000).toStringAsFixed(2)} km';
+            'Trạm: ${patrol.stationName.isNotEmpty ? patrol.stationName : '--'}\n'
+            'Phương tiện: ${patrol.transportType}\n'
+            'Điểm GPS: ${patrol.totalWaypoints ?? 0} điểm\n'
+            'Quãng đường: ${dist.toStringAsFixed(2)} km\n'
+            'Thời gian: $durStr';
       });
 
       if (mounted) {
@@ -203,6 +214,31 @@ class _ImportPatrolScreenState extends ConsumerState<ImportPatrolScreen> {
                     Text(
                       _lastImportInfo!,
                       style: const TextStyle(fontSize: 13),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            icon: const Icon(Icons.hiking, size: 16),
+                            label: const Text('Xem chuyến'),
+                            onPressed: _lastPatrolId != null
+                                ? () => context.go('/patrols/$_lastPatrolId')
+                                : null,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            icon: const Icon(Icons.photo_library, size: 16),
+                            label: const Text('Xem ảnh'),
+                            onPressed: _lastPatrolId != null
+                                ? () => context.go(
+                                    '/admin/photos?patrol_id=$_lastPatrolId')
+                                : null,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
