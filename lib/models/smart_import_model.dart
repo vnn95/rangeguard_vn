@@ -197,6 +197,8 @@ class SmartWaypoint {
   final double? accuracy;
   final String observationType;
   final String? photoUrl;
+  /// Base64-encoded photos extracted from SMART sighting fields (SMART_Photo0:0 etc.)
+  final List<String> base64Photos;
   final String? notes;
   final DateTime timestamp;
 
@@ -207,6 +209,7 @@ class SmartWaypoint {
     this.accuracy,
     required this.observationType,
     this.photoUrl,
+    this.base64Photos = const [],
     this.notes,
     required this.timestamp,
   });
@@ -227,15 +230,16 @@ class SmartWaypoint {
         props['timestamp'] as String? ??
         DateTime.now().toIso8601String();
 
-    // Photo: real SMART stores base64 photos as SMART_Photo0:0, SMART_Photo0:1 ...
-    // We store the first key name as a marker; actual upload is handled separately.
-    final photoKey = s.keys.firstWhere(
-      (k) => k.startsWith('SMART_Photo'),
-      orElse: () => '',
-    );
-    final photoUrl = photoKey.isNotEmpty
-        ? null // base64 photos handled by PhotoRepository
-        : (props['photo'] as String? ?? props['photo_url'] as String?);
+    // URL-based photos (simple format)
+    final photoUrl = props['photo'] as String? ?? props['photo_url'] as String?;
+
+    // Base64 photos from real SMART: keys are SMART_Photo0:0, SMART_Photo0:1 ...
+    final base64Photos = s.entries
+        .where((e) => e.key.startsWith('SMART_Photo') &&
+            e.value is String &&
+            (e.value as String).length > 100) // real base64, not empty markers
+        .map((e) => e.value as String)
+        .toList();
 
     // Notes from sighting attributes
     final notes = s['SMART_Notes'] as String? ??
@@ -254,6 +258,7 @@ class SmartWaypoint {
       accuracy:        (props['accuracy'] as num?)?.toDouble(),
       observationType: obsType,
       photoUrl:        photoUrl,
+      base64Photos:    base64Photos,
       notes:           notes,
       timestamp:       _parseDateTime(dateStr),
     );

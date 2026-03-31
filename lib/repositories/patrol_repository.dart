@@ -313,11 +313,17 @@ class PatrolRepository {
     await addWaypointsBatch(waypoints);
 
     // ── Trích xuất và lưu ảnh từ waypoints ──────────────────────────
-    // Lưu riêng vào bảng patrol_photos để tra cứu dễ dàng
+    // Kết hợp waypoint data với base64 photos từ SmartWaypoint
     final photoRepo = PhotoRepository();
-    final waypointMaps = waypoints.map((w) => {
-      ...w.toMap(),
-      'id': w.id,
+    final smartWpMap = {for (final sw in smartData.waypoints) sw.timestamp: sw};
+    final waypointMaps = waypoints.map((w) {
+      final base = w.toMap();
+      // Attach base64 photos by matching timestamp
+      final sw = smartWpMap[w.timestamp];
+      if (sw != null && sw.base64Photos.isNotEmpty) {
+        base['base64_photos'] = sw.base64Photos;
+      }
+      return base;
     }).toList();
     try {
       final photoCount = await photoRepo.extractPhotosFromWaypoints(

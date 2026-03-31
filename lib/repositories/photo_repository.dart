@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 import 'package:uuid/uuid.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -211,7 +212,8 @@ class PhotoRepository {
     return photo;
   }
 
-  /// Trích xuất và lưu tất cả ảnh từ waypoints của 1 patrol
+  /// Trích xuất và lưu tất cả ảnh từ waypoints của 1 patrol.
+  /// Hỗ trợ cả URL-based và base64-encoded (SMART CT format).
   Future<int> extractPhotosFromWaypoints({
     required String patrolId,
     required List<Map<String, dynamic>> waypointMaps,
@@ -219,23 +221,60 @@ class PhotoRepository {
   }) async {
     int count = 0;
     for (final wp in waypointMaps) {
-      final photoUrl = wp['photo_url'] as String? ?? wp['photo'] as String?;
-      if (photoUrl == null || photoUrl.isEmpty) continue;
+      final waypointId = wp['id'] as String?;
+      final lat  = (wp['latitude']  as num?)?.toDouble();
+      final lon  = (wp['longitude'] as num?)?.toDouble();
+      final takenAt = wp['timestamp'] != null
+          ? DateTime.tryParse(wp['timestamp'] as String)
+          : null;
+      final notes   = wp['notes'] as String?;
+      final obsType = wp['observation_type'] as String? ?? 'Photo';
 
-      await savePhotoReference(
-        patrolId: patrolId,
-        waypointId: wp['id'] as String?,
-        originalUrl: photoUrl,
-        latitude: (wp['latitude'] as num?)?.toDouble(),
-        longitude: (wp['longitude'] as num?)?.toDouble(),
-        takenAt: wp['timestamp'] != null
-            ? DateTime.tryParse(wp['timestamp'] as String)
-            : null,
-        notes: wp['notes'] as String?,
-        observationType: wp['observation_type'] as String? ?? 'Photo',
-        uploadedBy: uploadedBy,
-      );
-      count++;
+      // URL-based photo (simple format)
+      final photoUrl = wp['photo_url'] as String? ?? wp['photo'] as String?;
+      if (photoUrl != null && photoUrl.isNotEmpty) {
+        await savePhotoReference(
+          patrolId: patrolId,
+          waypointId: waypointId,
+          originalUrl: photoUrl,
+          latitude: lat,
+          longitude: lon,
+          takenAt: takenAt,
+          notes: notes,
+          observationType: obsType,
+          uploadedBy: uploadedBy,
+        );
+        count++;
+      }
+
+      // Base64-encoded photos from real SMART CT export
+      final b64List = wp['base64_photos'] as List?;
+      if (b64List != null && b64List.isNotEmpty) {
+        for (int i = 0; i < b64List.length; i++) {
+          final b64 = b64List[i] as String?;
+          if (b64 == null || b64.isEmpty) continue;
+          try {
+            // Strip data URI prefix if present (data:image/jpeg;base64,...)
+            final raw = b64.contains(',') ? b64.split(',').last : b64;
+            final bytes = base64Decode(raw);
+            final fileName = '${waypointId ?? _uuid.v4()}_$i.jpg';
+            await uploadPhoto(
+              patrolId: patrolId,
+              waypointId: waypointId,
+              bytes: bytes,
+              fileName: fileName,
+              latitude: lat,
+              longitude: lon,
+              notes: notes,
+              observationType: obsType,
+              uploadedBy: uploadedBy,
+            );
+            count++;
+          } catch (_) {
+            // Skip corrupt base64 silently
+          }
+        }
+      }
     }
     return count;
   }

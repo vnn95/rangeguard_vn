@@ -171,7 +171,7 @@ class _ImportPatrolScreenState extends ConsumerState<ImportPatrolScreen> {
             ),
             const SizedBox(height: 12),
 
-            // Import sample
+            // Confirm import (demo data)
             ElevatedButton.icon(
               onPressed: _isLoading ? null : _importSampleData,
               icon: _isLoading
@@ -181,8 +181,8 @@ class _ImportPatrolScreenState extends ConsumerState<ImportPatrolScreen> {
                       child: CircularProgressIndicator(
                           strokeWidth: 2, color: Colors.white),
                     )
-                  : const Icon(Icons.download_outlined),
-              label: const Text('Import dữ liệu mẫu (patrol2.json)'),
+                  : const Icon(Icons.check_circle_outline),
+              label: const Text('Xác nhận Import'),
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 backgroundColor: AppColors.accent,
@@ -252,45 +252,6 @@ class _ImportPatrolScreenState extends ConsumerState<ImportPatrolScreen> {
               ),
             ],
 
-            const SizedBox(height: 24),
-            // Format hint
-            const Text(
-              'Định dạng GeoJSON mẫu:',
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                color: AppColors.primaryDark,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFF1E1E1E),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Text(
-                '{\n'
-                '  "type": "FeatureCollection",\n'
-                '  "features": [\n'
-                '    {\n'
-                '      "type": "Feature",\n'
-                '      "geometry": {"type":"Point","coordinates":[108.33,15.88]},\n'
-                '      "properties": {\n'
-                '        "type": "NewPatrol",\n'
-                '        "patrol_id": "P-2024-001",\n'
-                '        "leader": "Nguyễn Văn A",\n'
-                '        "date": "2024-01-15T08:00:00"\n'
-                '      }\n'
-                '    }\n'
-                '  ]\n'
-                '}',
-                style: TextStyle(
-                  color: Color(0xFF98C379),
-                  fontFamily: 'monospace',
-                  fontSize: 12,
-                ),
-              ),
-            ),
           ],
         ),
       ),
