@@ -96,10 +96,18 @@ class _PatrolDetailScreenState extends ConsumerState<PatrolDetailScreen> {
 
   Widget _buildContent(
       BuildContext context, Patrol patrol, List<Waypoint> waypoints) {
+    // Precompute once – avoid rebuilding 6000-item lists on every setState
     final points = waypoints.map((w) => w.latLng).toList();
     final center = points.isNotEmpty
         ? GeoUtils.centerOf(points)
         : const LatLng(15.88, 108.33);
+
+    // Only non-waypoint observations become real Marker widgets (typically < 20)
+    // All plain waypoints use CircleLayer – rendered in a single canvas paint call
+    final specialWaypoints = waypoints
+        .where((w) => w.observationType != 'waypoint' &&
+                      w.observationType != 'Waypoint')
+        .toList();
 
     // Pagination
     final totalPages = (_pageSize > 0 && waypoints.isNotEmpty)
@@ -126,17 +134,26 @@ class _PatrolDetailScreenState extends ConsumerState<PatrolDetailScreen> {
                   urlTemplate: AppConstants.osmTileUrl,
                   userAgentPackageName: 'com.rangeguard.vn',
                 ),
+                // Route polyline – single path, very fast
                 if (points.length >= 2)
                   PolylineLayer(polylines: [
                     Polyline(
                       points: points,
-                      strokeWidth: 3.5,
-                      color: AppColors.primary.withValues(alpha: 0.85),
+                      strokeWidth: 3,
+                      color: AppColors.primary.withValues(alpha: 0.75),
                     ),
                   ]),
-                MarkerLayer(
-                  markers: _buildMarkers(waypoints),
+                // Plain waypoints as circles – ONE canvas paint call for all N points
+                // Much faster than N Marker widgets (no widget tree per point)
+                CircleLayer(
+                  circles: _buildCircles(waypoints),
                 ),
+                // Special observations (Animal, Threat, Photo, etc.) as icons
+                // Typically < 20, so MarkerLayer is fine here
+                if (specialWaypoints.isNotEmpty)
+                  MarkerLayer(
+                    markers: _buildSpecialMarkers(specialWaypoints, waypoints),
+                  ),
               ],
             ),
           ),
@@ -309,36 +326,52 @@ class _PatrolDetailScreenState extends ConsumerState<PatrolDetailScreen> {
     );
   }
 
-  List<Marker> _buildMarkers(List<Waypoint> waypoints) {
-    final markers = <Marker>[];
+  /// Plain waypoints as CircleMarker – O(1) paint, no widget tree per point.
+  List<CircleMarker> _buildCircles(List<Waypoint> waypoints) {
+    final circles = <CircleMarker>[];
     for (int i = 0; i < waypoints.length; i++) {
       final w = waypoints[i];
+      final isHighlighted = _highlightedIndex == i;
+      // Skip special types – they get a proper Marker icon instead
+      if (w.observationType != 'waypoint' && w.observationType != 'Waypoint') {
+        continue;
+      }
+      circles.add(CircleMarker(
+        point: w.latLng,
+        radius: isHighlighted ? 7 : 4,
+        color: AppColors.mapWaypoint.withValues(alpha: isHighlighted ? 1.0 : 0.7),
+        borderColor: Colors.white,
+        borderStrokeWidth: isHighlighted ? 2 : 1,
+      ));
+    }
+    return circles;
+  }
+
+  /// Special observations (Animal, Threat, Photo…) as icon Markers.
+  /// [allWaypoints] is needed to compute the correct global index for highlight.
+  List<Marker> _buildSpecialMarkers(
+      List<Waypoint> special, List<Waypoint> allWaypoints) {
+    return special.map((w) {
+      final globalIndex = allWaypoints.indexOf(w);
+      final isHighlighted = _highlightedIndex == globalIndex;
       final color = _waypointColor(w);
       final icon = _waypointIcon(w);
-      final isHighlighted = _highlightedIndex == i;
+      final size = isHighlighted ? 36.0 : 26.0;
 
-      markers.add(Marker(
+      return Marker(
         point: w.latLng,
-        width: isHighlighted ? 36 : 24,
-        height: isHighlighted ? 36 : 24,
+        width: size,
+        height: size,
         child: Container(
           decoration: BoxDecoration(
             color: color,
             shape: BoxShape.circle,
-            border: Border.all(
-                color: Colors.white, width: isHighlighted ? 2.5 : 1.5),
-            boxShadow: [
-              BoxShadow(
-                  color: color.withValues(alpha: 0.5),
-                  blurRadius: isHighlighted ? 8 : 4)
-            ],
+            border: Border.all(color: Colors.white, width: 2),
           ),
-          child: Icon(icon,
-              color: Colors.white, size: isHighlighted ? 20 : 13),
+          child: Icon(icon, color: Colors.white, size: isHighlighted ? 20 : 14),
         ),
-      ));
-    }
-    return markers;
+      );
+    }).toList();
   }
 
   Color _waypointColor(Waypoint w) {

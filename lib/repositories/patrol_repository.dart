@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:logger/logger.dart';
 import 'package:uuid/uuid.dart';
 import 'package:latlong2/latlong.dart';
@@ -10,6 +12,13 @@ import 'package:rangeguard_vn/models/patrol_model.dart';
 import 'package:rangeguard_vn/models/waypoint_model.dart';
 import 'package:rangeguard_vn/models/smart_import_model.dart';
 import 'package:rangeguard_vn/repositories/photo_repository.dart';
+
+/// Top-level function required by compute() – parses JSON string fully in a
+/// background isolate so the UI thread stays responsive for large SMART files.
+SmartPatrolData _parseSmartJson(String jsonStr) {
+  final json = jsonDecode(jsonStr) as Map<String, dynamic>;
+  return SmartPatrolData.fromGeoJson(json);
+}
 
 final _log = Logger();
 
@@ -140,7 +149,9 @@ class PatrolRepository {
     try {
       final data = await _client
           .from(AppConstants.waypointsTable)
-          .select()
+          // Exclude generated/heavy columns: notes_tsv (tsvector), location (geometry)
+          .select('id,patrol_id,latitude,longitude,altitude,accuracy,'
+              'bearing,speed,observation_type,photo_url,notes,timestamp,created_at')
           .eq('patrol_id', patrolId)
           .order('timestamp');
       return data.map((e) => Waypoint.fromMap(e)).toList();
@@ -176,14 +187,19 @@ class PatrolRepository {
   }
 
   Future<List<Waypoint>> addWaypointsBatch(List<Waypoint> waypoints) async {
-    for (final w in waypoints) {
-      _waypointBox.put(w.id, w.toMap());
-    }
+    // Single Hive transaction instead of N individual puts
+    await _waypointBox.putAll({for (final w in waypoints) w.id: w.toMap()});
 
+    // Supabase upsert in chunks of 500 to avoid request-size limits
+    const chunkSize = 500;
     try {
-      await _client
-          .from(AppConstants.waypointsTable)
-          .upsert(waypoints.map((w) => w.toMap()).toList());
+      for (var i = 0; i < waypoints.length; i += chunkSize) {
+        final chunk = waypoints.sublist(
+            i, (i + chunkSize).clamp(0, waypoints.length));
+        await _client
+            .from(AppConstants.waypointsTable)
+            .upsert(chunk.map((w) => w.toMap()).toList());
+      }
     } catch (_) {
       for (final w in waypoints) {
         await _sync.addToQueue(SyncQueueItem(
@@ -201,10 +217,11 @@ class PatrolRepository {
   // ── SMART Import ─────────────────────────────────────────────────────────
 
   Future<Patrol> importFromSmartJson(
-    Map<String, dynamic> json,
+    String jsonStr,   // raw JSON string so it can be sent to an isolate
     String createdBy,
   ) async {
-    final smartData = SmartPatrolData.fromGeoJson(json);
+    // Parse entirely in a background isolate (jsonDecode + feature iteration)
+    final smartData = await compute(_parseSmartJson, jsonStr);
     final np = smartData.newPatrol;
 
     final patrolId = _uuid.v4();
