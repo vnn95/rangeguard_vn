@@ -150,7 +150,7 @@ class _PatrolListScreenState extends ConsumerState<PatrolListScreen> {
             ListTile(
               leading: const Icon(Icons.date_range),
               title: const Text('Từ ngày'),
-              subtitle: Text(from != null ? AppDateUtils.formatDate(from) : 'Tất cả'),
+              subtitle: Text(from != null ? AppDateUtils.formatDate(from!) : 'Tất cả'),
               onTap: () async {
                 final picked = await showDatePicker(
                   context: ctx,
@@ -164,7 +164,7 @@ class _PatrolListScreenState extends ConsumerState<PatrolListScreen> {
             ListTile(
               leading: const Icon(Icons.date_range),
               title: const Text('Đến ngày'),
-              subtitle: Text(to != null ? AppDateUtils.formatDate(to) : 'Tất cả'),
+              subtitle: Text(to != null ? AppDateUtils.formatDate(to!) : 'Tất cả'),
               onTap: () async {
                 final picked = await showDatePicker(
                   context: ctx,

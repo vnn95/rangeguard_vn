@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:rangeguard_vn/core/supabase/supabase_config.dart';
 import 'package:rangeguard_vn/core/constants/app_constants.dart';
@@ -92,7 +93,7 @@ class AuthRepository {
     return data.map((e) => UserProfile.fromMap(e)).toList();
   }
 
-  Future<String?> uploadAvatar(String userId, List<int> bytes,
+  Future<String?> uploadAvatar(String userId, Uint8List bytes,
       String fileName) async {
     final path = '$userId/avatar/$fileName';
     await _client.storage.from('avatars').uploadBinary(

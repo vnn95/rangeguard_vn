@@ -9,7 +9,6 @@ import 'package:rangeguard_vn/models/patrol_model.dart';
 import 'package:rangeguard_vn/models/waypoint_model.dart';
 import 'package:rangeguard_vn/providers/map_provider.dart';
 import 'package:rangeguard_vn/providers/patrol_provider.dart';
-import 'package:rangeguard_vn/widgets/common/app_loading.dart';
 
 class MapScreen extends ConsumerStatefulWidget {
   const MapScreen({super.key});
@@ -119,8 +118,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                       );
                     }).toList(),
                   ),
-                  loading: () => const PolylineLayer(polylines: []),
-                  error: (_, __) => const PolylineLayer(polylines: []),
+                  loading: () => const PolylineLayer<Object>(polylines: []),
+                  error: (_, __) => const PolylineLayer<Object>(polylines: []),
                 ),
 
               // Selected waypoint markers

@@ -1,6 +1,3 @@
-import 'package:latlong2/latlong.dart';
-import 'package:rangeguard_vn/core/utils/geo_utils.dart';
-
 enum PatrolStatus { scheduled, active, completed, cancelled }
 
 class Patrol {

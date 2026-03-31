@@ -129,7 +129,7 @@ class _StartPatrolScreenState extends ConsumerState<StartPatrolScreen> {
         createdAt: DateTime.now(),
       );
 
-      await ref.read(activePatrolProvider.notifier).startPatrol(patrol);
+      ref.read(activePatrolProvider.notifier).startPatrol(patrol);
 
       // Save start waypoint
       final startWp = Waypoint(

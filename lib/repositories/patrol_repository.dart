@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:uuid/uuid.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:hive_flutter/hive_flutter.dart';
